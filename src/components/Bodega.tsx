@@ -49,6 +49,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
   const [q, setQ] = useState("");
   const [zona, setZona] = useState<string | null>(null);
   const [abierta, setAbierta] = useState<string | null>(null);
+  const [etiquetaMuerta, setEtiquetaMuerta] = useState<string | null>(null);
   const [porBorrar, setPorBorrar] = useState<string | null>(null);
   const [falloBorrar, setFalloBorrar] = useState<string | null>(null);
   const [visor, setVisor] = useState<{ cajaId: string; i: number } | null>(null);
@@ -69,7 +70,13 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
     (async () => {
       const { data: sesion } = await sb.auth.getUser();
       if (!sesion.user) {
-        router.replace("/login");
+        /* El código escaneado viaja al login para poder volver aquí. Sin
+           esto se pierde, y entrar te deja en la lista general con la
+           caja todavía en la mano. */
+        const destino = window.location.pathname;
+        router.replace(
+          destino === "/" ? "/login" : `/login?volver=${encodeURIComponent(destino)}`
+        );
         return;
       }
       if (!vivo) return;
@@ -82,9 +89,13 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
       setCajas(lista);
       setListo(true);
 
+      /* Una etiqueta pegada puede sobrevivir a su caja: los números no se
+         reciclan justamente porque eso pasa. Si el código escaneado ya no
+         existe hay que decirlo, no dejar la lista general sin explicar. */
       if (codigoInicial) {
         const c = lista.find((x) => x.codigo === codigoInicial);
         if (c) setAbierta(c.id);
+        else setEtiquetaMuerta(codigoInicial);
       }
 
       /* Las fotos entran después: la lista no espera por las imágenes.
@@ -252,9 +263,12 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
     return `${p}-${String(n).padStart(2, "0")}`;
   };
 
-  const crear = async () => {
+  /* Con código fijo se crea la caja que la etiqueta ya nombra, para poder
+     reusar la calcomanía pegada en vez de despegarla. Sin argumento sigue
+     el consecutivo de siempre. */
+  const crear = async (codigoFijo?: string) => {
     soltar(abierta);
-    const codigo = siguienteCodigo();
+    const codigo = codigoFijo ?? siguienteCodigo();
     ultimaZona.current = partesCodigo(codigo)[0];
     const { data, error } = await sb
       .from("cajas")
@@ -264,6 +278,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
     if (error || !data) return;
     setCajas((prev) => [...prev, data as Caja].sort(ordenarPorCodigo));
     setAbierta((data as Caja).id);
+    setEtiquetaMuerta(null);
     setQ("");
   };
 
@@ -417,6 +432,18 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
         </div>
       </div>
 
+      {etiquetaMuerta && (
+        <div className="muerta">
+          <span>
+            no existe ninguna caja <strong>{etiquetaMuerta}</strong>
+          </span>
+          <button onClick={() => crear(etiquetaMuerta)}>crear {etiquetaMuerta}</button>
+          <button className="descartar" onClick={() => setEtiquetaMuerta(null)}>
+            descartar
+          </button>
+        </div>
+      )}
+
       <div className="lista">
         {visibles.map((c) => {
           const esta = abierta === c.id;
@@ -541,13 +568,13 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
           <div className="nada">
             Nada con «{q || zona}».
             <br />
-            <button onClick={crear}>Crear una caja nueva</button> y escribir ahí lo
-            que buscas.
+            <button onClick={() => crear()}>Crear una caja nueva</button> y escribir
+            ahí lo que buscas.
           </div>
         )}
 
         {listo && !!visibles.length && (
-          <button className="nueva" onClick={crear}>
+          <button className="nueva" onClick={() => crear()}>
             <span>+</span> nueva caja {siguienteCodigo()}
           </button>
         )}

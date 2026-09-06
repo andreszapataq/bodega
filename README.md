@@ -55,6 +55,10 @@ en Project Settings → Environment Variables.
 - `+ nueva caja` sugiere el consecutivo de la zona donde vienes
   trabajando. Nunca reutiliza el número de una caja borrada.
 - Tres fotos por caja. Se comprimen a 1400 px antes de subirse.
+- Escanear sin sesión abierta te lleva al login y, al entrar, te devuelve
+  a la caja que escaneaste. No a la lista general.
+- Escanear la etiqueta de una caja borrada ofrece crearla con ese mismo
+  código, para reusar la calcomanía en vez de despegarla.
 
 ## Decisiones que conviene no deshacer
 

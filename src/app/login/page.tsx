@@ -19,8 +19,18 @@ export default function Login() {
       password: clave,
     });
     setEntrando(false);
-    if (error) setError("Ese correo y contraseña no coinciden.");
-    else router.replace("/");
+    if (error) {
+      setError("Ese correo y contraseña no coinciden.");
+      return;
+    }
+    /* Volver a donde ibas. Escanear el QR de una caja y terminar en la
+       lista general desperdicia el escaneo, que es justo lo que el QR
+       venía a evitar. Solo rutas de esta app: un destino externo, o uno
+       que empiece por // y el navegador lea como otro sitio, no se sigue. */
+    const volver = new URLSearchParams(window.location.search).get("volver");
+    router.replace(
+      volver?.startsWith("/") && !volver.startsWith("//") ? volver : "/"
+    );
   };
 
   return (

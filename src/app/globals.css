@@ -62,6 +62,18 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .meta a { color: var(--gris); text-decoration: none; }
 .meta a:hover, .zona:hover, .limpiar:hover { color: var(--tiza); }
 
+/* ── etiqueta sin caja ────────────────────────────────────── */
+/* El QR de una caja borrada sigue llevando a su código. Ofrecer crearla
+   con ese mismo código deja reusar la calcomanía en vez de despegarla. */
+.muerta {
+  display: flex; align-items: baseline; gap: 1.1rem; flex-wrap: wrap;
+  margin-top: 1.9rem; font-size: .78rem; color: var(--gris);
+}
+.muerta strong { color: var(--vivo); font-weight: 600; letter-spacing: .04em; }
+.muerta button { color: var(--vivo); }
+.muerta .descartar { color: var(--gris); }
+.muerta .descartar:hover { color: var(--tiza); }
+
 /* ── lista ────────────────────────────────────────────────── */
 .lista { margin-top: 2.25rem; }
 .fila { border-bottom: 1px solid var(--hilo); padding: .95rem 0; }
