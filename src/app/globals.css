@@ -76,6 +76,10 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
   border-bottom: 1px dashed var(--hilo); transition: border-color .15s ease;
 }
 .cod-edit:focus { border-bottom-color: var(--vivo); }
+/* No hay diálogos: el aviso vive donde ocurrió el problema. Lo más
+   brillante de la línea, que es como esta interfaz sube la voz. */
+.aviso { color: var(--vivo); font-size: .73rem; line-height: 1.4; }
+.linea .aviso { padding-top: .24rem; }
 .txt {
   flex: 1; font-family: var(--sans); font-size: 1rem; font-weight: 300;
   line-height: 1.5; letter-spacing: -.005em; min-width: 0; overflow-wrap: anywhere;

@@ -69,7 +69,9 @@ funciones, se abandonan por fricción al registrar.
 - La lista se pinta antes que las imágenes. Las URLs firmadas se piden en
   lote después de cargar el texto. No bloquear la lista esperando fotos.
 - La escritura a Postgres va agrupada cada 600 ms por caja. No un UPDATE
-  por tecla.
+  por tecla. Los cambios de esa ventana se acumulan, no se reemplazan.
+  Ocultar la pestaña o salir fuerza lo pendiente: en el celular irse es
+  cambiar de app, no cerrar la página.
 
 ## Pendientes
 

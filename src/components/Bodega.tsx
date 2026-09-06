@@ -50,6 +50,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
   const [zona, setZona] = useState<string | null>(null);
   const [abierta, setAbierta] = useState<string | null>(null);
   const [porBorrar, setPorBorrar] = useState<string | null>(null);
+  const [falloBorrar, setFalloBorrar] = useState<string | null>(null);
   const [visor, setVisor] = useState<{ cajaId: string; i: number } | null>(null);
   const [listo, setListo] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
@@ -60,6 +61,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
   const ultimaZona = useRef<string | null>(null);
   const guardarTimer = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const porGuardar = useRef<Record<string, Partial<Caja>>>({});
+  const codigoGuardado = useRef<Record<string, string>>({});
 
   /* ── carga ───────────────────────────────────────────────── */
   useEffect(() => {
@@ -108,6 +110,41 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
 
   /* ── escritura ───────────────────────────────────────────── */
 
+  /** Vacía contra Postgres lo que una caja tenga pendiente. Vive aparte de
+   *  tocar() porque el temporizador no es la única forma de llegar aquí:
+   *  irse de la app también tiene que poder forzar la escritura. */
+  const escribir = useCallback(
+    async (id: string) => {
+      const cambios = porGuardar.current[id];
+      clearTimeout(guardarTimer.current[id]);
+      delete guardarTimer.current[id];
+      delete porGuardar.current[id];
+      if (!cambios) return;
+      const { error } = await sb.from("cajas").update(cambios).eq("id", id);
+      if (error) console.error("no se pudo guardar la caja", error);
+    },
+    [sb]
+  );
+
+  /** Bloquear el celular o cambiar de app suspende la pestaña, y los 600 ms
+   *  que faltaban no llegan a cumplirse: ese último cambio se perdía. De
+   *  pie frente al estante, irse así es lo normal, no la excepción. */
+  const guardarPendientes = useCallback(
+    () => Promise.all(Object.keys(porGuardar.current).map((id) => escribir(id))),
+    [escribir]
+  );
+
+  useEffect(() => {
+    const alOcultar = () => {
+      if (document.visibilityState === "hidden") void guardarPendientes();
+    };
+    document.addEventListener("visibilitychange", alOcultar);
+    return () => {
+      document.removeEventListener("visibilitychange", alOcultar);
+      void guardarPendientes();
+    };
+  }, [guardarPendientes]);
+
   /** El estado responde al instante; la escritura a Postgres se agrupa
    *  cada 600 ms por caja, para no mandar un UPDATE por tecla.
    *
@@ -121,21 +158,51 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
       setCajas((prev) =>
         prev.map((c) => (c.id === id ? { ...c, ...cambios, actualizado } : c))
       );
-      porGuardar.current[id] = { ...porGuardar.current[id], ...cambios };
+      porGuardar.current[id] = { ...porGuardar.current[id], ...cambios, actualizado };
       clearTimeout(guardarTimer.current[id]);
-      guardarTimer.current[id] = setTimeout(async () => {
-        const acumulados = porGuardar.current[id];
-        delete porGuardar.current[id];
-        delete guardarTimer.current[id];
-        const { error } = await sb
-          .from("cajas")
-          .update({ ...acumulados, actualizado })
-          .eq("id", id);
-        if (error) console.error("no se pudo guardar la caja", error);
+      guardarTimer.current[id] = setTimeout(() => {
+        void escribir(id);
       }, 600);
     },
-    [sb]
+    [escribir]
   );
+
+  /* Postgres ya rechaza el código repetido por la restricción única, pero
+     ese error solo llegaba a la consola: la pantalla se quedaba mostrando
+     un código que la base nunca aceptó. La lista entera está en memoria,
+     así que el choque se ve aquí, mientras escribes. La comparación es
+     exacta a propósito: tiene que decir lo mismo que la restricción. */
+  const chocaCodigo = (id: string, codigo: string) =>
+    cajas.some((c) => c.id !== id && c.codigo === codigo);
+
+  const cambiarCodigo = (id: string, valor: string) => {
+    const v = valor.toUpperCase();
+    ultimaZona.current = partesCodigo(v)[0] || null;
+    /* Lo escrito se ve aunque choque, porque si no no habría cómo
+       corregirlo; lo que no ocurre es la escritura, y la línea lo dice. */
+    if (chocaCodigo(id, v)) {
+      codigoGuardado.current[id] ??= cajas.find((c) => c.id === id)?.codigo ?? "";
+      setCajas((prev) => prev.map((c) => (c.id === id ? { ...c, codigo: v } : c)));
+      return;
+    }
+    codigoGuardado.current[id] = v;
+    tocar(id, { codigo: v });
+  };
+
+  /* Al dejar la caja, un código repetido no puede quedarse en pantalla: la
+     base conserva el anterior y la lista mostraría dos iguales, que es
+     justo lo que un estante no puede permitirse. */
+  const soltar = (id: string | null) => {
+    if (!id) return;
+    setCajas((prev) => {
+      const c = prev.find((x) => x.id === id);
+      const guardado = codigoGuardado.current[id];
+      if (!c || guardado === undefined || !prev.some((o) => o.id !== id && o.codigo === c.codigo))
+        return prev;
+      return prev.map((x) => (x.id === id ? { ...x, codigo: guardado } : x));
+    });
+    delete codigoGuardado.current[id];
+  };
 
   const terminos = useMemo(() => norm(q).split(/\s+/).filter(Boolean), [q]);
 
@@ -186,6 +253,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
   };
 
   const crear = async () => {
+    soltar(abierta);
     const codigo = siguienteCodigo();
     ultimaZona.current = partesCodigo(codigo)[0];
     const { data, error } = await sb
@@ -201,16 +269,30 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
 
   const borrar = async (id: string) => {
     const caja = cajas.find((c) => c.id === id);
-    /* Sin esto, lo escrito en los últimos 600 ms se guardaría sobre una
-       fila que ya no existe. */
+
+    /* La fila antes que las fotos: si el DELETE falla, las fotos siguen en
+       su sitio y la caja queda entera. Al revés quedaba una caja viva
+       apuntando a fotos ya borradas. */
+    const { error } = await sb.from("cajas").delete().eq("id", id);
+    if (error) {
+      console.error("no se pudo borrar la caja", error);
+      setFalloBorrar(id);
+      setPorBorrar(null);
+      return;
+    }
+
+    /* Recién con el DELETE confirmado se cancela lo pendiente: si hubiera
+       fallado, esos últimos 600 ms de escritura todavía hacían falta. */
     clearTimeout(guardarTimer.current[id]);
     delete guardarTimer.current[id];
     delete porGuardar.current[id];
+    delete codigoGuardado.current[id];
+
     if (caja?.fotos?.length) await sb.storage.from("fotos").remove(caja.fotos);
-    await sb.from("cajas").delete().eq("id", id);
     setCajas((prev) => prev.filter((c) => c.id !== id));
     setAbierta(null);
     setPorBorrar(null);
+    setFalloBorrar(null);
   };
 
   const subirFotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -322,6 +404,9 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
             <a href="/etiquetas">etiquetas</a>
             <button
               onClick={async () => {
+                /* Sin la sesión no hay permiso para escribir: lo pendiente
+                   tiene que salir antes, no 600 ms después. */
+                await guardarPendientes();
                 await sb.auth.signOut();
                 router.replace("/login");
               }}
@@ -343,19 +428,20 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
                     className="cod cod-edit"
                     value={c.codigo}
                     aria-label="Código de la caja"
-                    onChange={(e) => {
-                      const v = e.target.value.toUpperCase();
-                      ultimaZona.current = partesCodigo(v)[0] || null;
-                      tocar(c.id, { codigo: v });
-                    }}
+                    onChange={(e) => cambiarCodigo(c.id, e.target.value)}
                   />
+                  {chocaCodigo(c.id, c.codigo) && (
+                    <span className="aviso">ya existe, sin guardar</span>
+                  )}
                 </div>
               ) : (
                 <button
                   className="linea"
                   onClick={() => {
+                    soltar(abierta);
                     setAbierta(c.id);
                     setPorBorrar(null);
+                    setFalloBorrar(null);
                   }}
                 >
                   <span className="cod">{c.codigo}</span>
@@ -421,11 +507,29 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
                         <button onClick={() => setPorBorrar(null)}>no</button>
                       </>
                     ) : (
-                      <button className="peligro" onClick={() => setPorBorrar(c.id)}>
+                      <button
+                        className="peligro"
+                        onClick={() => {
+                          setPorBorrar(c.id);
+                          setFalloBorrar(null);
+                        }}
+                      >
                         borrar
                       </button>
                     )}
-                    <button onClick={() => setAbierta(null)}>cerrar</button>
+                    {falloBorrar === c.id && (
+                      <span className="aviso">
+                        no se pudo borrar, revisa la conexión
+                      </span>
+                    )}
+                    <button
+                      onClick={() => {
+                        soltar(c.id);
+                        setAbierta(null);
+                      }}
+                    >
+                      cerrar
+                    </button>
                   </div>
                 </div>
               )}
