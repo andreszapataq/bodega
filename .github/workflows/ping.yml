@@ -1,0 +1,51 @@
+name: ping a supabase
+
+# El plan gratuito de Supabase pausa el proyecto tras 7 días sin peticiones.
+# Este trabajo hace una consulta real a la base para que ese contador nunca
+# llegue a cumplirse.
+#
+# Diario y no semanal a propósito: con una ventana de 7 días harían falta
+# seis fallos seguidos para que el proyecto alcance a dormirse.
+
+on:
+  schedule:
+    # Al minuto 37 y no en punto: a las horas exactas GitHub encola tantos
+    # trabajos que los retrasa.
+    - cron: "37 14 * * *"
+  workflow_dispatch:
+
+jobs:
+  despertar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: consultar la base
+        env:
+          # La clave publicable no es un secreto: viaja en el bundle del
+          # navegador por diseño, y lo que protege las filas es RLS. Guardarla
+          # como secret daría una sensación de resguardo sobre algo que ya es
+          # público, y obligaría a configurarlo a mano.
+          SUPABASE_URL: https://djwvzpkznftaqmkvvteh.supabase.co
+          SUPABASE_CLAVE: sb_publishable_5rCaP1TjAglNv6p1leTsrQ_FrEHvmnF
+        run: |
+          set -euo pipefail
+
+          codigo=$(curl -sS -o cuerpo.txt -w '%{http_code}' \
+            --max-time 30 --retry 2 --retry-delay 5 \
+            -H "apikey: ${SUPABASE_CLAVE}" \
+            -H "Authorization: Bearer ${SUPABASE_CLAVE}" \
+            "${SUPABASE_URL}/rest/v1/cajas?select=id&limit=1")
+
+          # La respuesta correcta es [] — RLS le oculta las filas al rol
+          # anónimo. Que venga vacía es la señal de que la seguridad funciona,
+          # no de que el ping falló.
+          echo "HTTP ${codigo} · respuesta: $(cat cuerpo.txt)"
+
+          # Un ping que falla en silencio es peor que no tener ninguno: creerías
+          # estar protegido. Si la consulta no sale bien, el trabajo falla y
+          # GitHub te avisa por correo.
+          if [ "${codigo}" != "200" ]; then
+            echo "::error::el ping falló con HTTP ${codigo}; el proyecto puede pausarse"
+            exit 1
+          fi
+
+          echo "proyecto despierto"
