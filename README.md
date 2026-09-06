@@ -13,8 +13,12 @@ Next.js · TypeScript · Supabase · Vercel
 2. SQL Editor → pegar `supabase/schema.sql` completo → Run.
    Crea la tabla `cajas`, el bucket privado `fotos` y las políticas RLS.
 3. Authentication → Users → Add user, con tu correo y contraseña.
-   No hay registro abierto: la app es de un solo usuario.
-4. Project Settings → API → copiar la URL y la clave `anon`.
+4. Authentication → Sign In / Providers → Email → apagar **Allow new
+   users to sign up**. Viene encendido por omisión, y la app es de un
+   solo usuario: sin esto, cualquiera con la clave publicable —que es
+   pública, viaja en el bundle— puede crear una cuenta. RLS le impide
+   ver tus cajas, pero te consume el cupo del plan gratuito.
+5. Project Settings → API → copiar la URL y la clave publicable.
 
 ## 2. Local
 
