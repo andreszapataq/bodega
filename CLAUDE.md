@@ -7,6 +7,12 @@ Stack: Next.js (App Router) · TypeScript · Supabase · Vercel.
 Todo el acceso a datos es desde el cliente; RLS protege las filas. No hay
 Server Actions ni route handlers, y no hacen falta.
 
+Por eso la sesión vive en `localStorage` y no en cookies: no hay servidor
+que necesite leerla. Guardarla en cookies la hacía viajar en cada
+petición, y en `localhost` —donde se comparten entre puertos— las de
+otros proyectos se sumaban hasta devolver un 431. Si alguna vez aparece
+un route handler que necesite la sesión, esta decisión hay que rehacerla.
+
 ## La tesis
 
 Una línea por caja. **Buscar es la app.** Registrar tiene que costar casi
