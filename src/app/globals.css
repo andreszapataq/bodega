@@ -10,6 +10,9 @@
   --hilo:     #2B2B2B;
   --tiza:     #ECECEC;
   --gris:     #7C7C7C;
+  /* Un paso por debajo de --gris. Para lo que debe poder encontrarse pero
+     no invitar al dedo: cerrar sesión no es navegar. */
+  --tenue:    #565656;
   --vivo:     #FFFFFF;
   --vivo-op:  rgba(255, 255, 255, .15);
 
@@ -58,9 +61,15 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 }
 .zona { color: var(--gris); transition: color .15s ease; }
 .zona.on { color: var(--vivo); }
-.meta .der { margin-left: auto; display: flex; gap: .9rem; }
+/* Más aire antes de salir: la separación física también evita el toque
+   equivocado, no solo el contraste. */
+.meta .der { margin-left: auto; display: flex; gap: 1.5rem; }
 .meta a { color: var(--gris); text-decoration: none; }
 .meta a:hover, .zona:hover, .limpiar:hover { color: var(--tiza); }
+/* Cerrar sesión queda por debajo de etiquetas en luminosidad: la misma
+   jerarquía que ordena el resto de la app, aplicada a la consecuencia. */
+.meta .der button { color: var(--tenue); }
+.meta .der button:hover { color: var(--tiza); }
 
 /* ── etiqueta sin caja ────────────────────────────────────── */
 /* El QR de una caja borrada sigue llevando a su código. Ofrecer crearla

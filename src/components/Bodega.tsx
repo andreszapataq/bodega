@@ -566,10 +566,34 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
 
         {listo && !visibles.length && (
           <div className="nada">
-            Nada con «{q || zona}».
-            <br />
-            <button onClick={() => crear()}>Crear una caja nueva</button> y escribir
-            ahí lo que buscas.
+            {/* Tres vacíos distintos que antes decían lo mismo. El de la
+                zona sola parece imposible —las zonas salen de las cajas que
+                existen— pero pasa: basta cambiarle el código a la última
+                caja de la zona que estás filtrando. */}
+            {!cajas.length ? (
+              <>
+                la bodega está vacía.
+                <br />
+                <button onClick={() => crear()}>crear la primera caja</button> y
+                escribir qué hay adentro.
+              </>
+            ) : q ? (
+              <>
+                {/* Nombrar la zona evita concluir que no tenés algo cuando
+                    en realidad está en otra. */}
+                nada con «{q}»{zona && ` dentro de la zona ${zona}`}.
+                <br />
+                <button onClick={() => crear()}>crear una caja nueva</button> y
+                escribir ahí lo que buscas.
+              </>
+            ) : (
+              <>
+                ya no queda ninguna caja en la zona {zona}.
+                <br />
+                <button onClick={() => setZona(null)}>ver todas</button> o{" "}
+                <button onClick={() => crear()}>crear una caja nueva</button>.
+              </>
+            )}
           </div>
         )}
 
