@@ -92,6 +92,8 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
   color: var(--vivo); font-weight: 600; font-size: .83rem; letter-spacing: .04em;
   padding-top: .19rem; flex-shrink: 0; font-variant-numeric: tabular-nums;
 }
+/* Hereda el tamaño de .cod, por debajo de 16px: es el único campo de la app
+   que lo hace, y por eso el viewport fija maximumScale (ver layout.tsx). */
 .cod-edit {
   width: 5.5ch; padding: 0 0 1px; margin-top: -1px;
   border-bottom: 1px dashed var(--hilo); transition: border-color .15s ease;
