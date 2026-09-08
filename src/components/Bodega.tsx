@@ -54,6 +54,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
   const [falloBorrar, setFalloBorrar] = useState<string | null>(null);
   const [visor, setVisor] = useState<{ cajaId: string; i: number } | null>(null);
   const [fotoPorQuitar, setFotoPorQuitar] = useState<string | null>(null);
+  const [ampliada, setAmpliada] = useState(false);
   const [listo, setListo] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
   const [uid, setUid] = useState<string | null>(null);
@@ -351,6 +352,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
   const cerrarVisor = useCallback(() => {
     setVisor(null);
     setFotoPorQuitar(null);
+    setAmpliada(false);
   }, []);
 
   const quitarFoto = async (cajaId: string, ruta: string) => {
@@ -372,9 +374,24 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
         const n = cajas.find((c) => c.id === v.cajaId)?.fotos?.length || 0;
         return n > 1 ? { ...v, i: (v.i + paso + n) % n } : v;
       });
+      /* Cada foto se abre entera: el acercamiento era de la anterior. */
+      setAmpliada(false);
     },
     [cajas]
   );
+
+  /* Safari amplía la página entera con el pellizco —ignora maximumScale— y
+     ese zoom no se iba al cerrar la foto, porque nunca fue de la foto:
+     quedaba la lista ampliada. Mientras el visor está abierto el
+     acercamiento es nuestro, así que el gesto del navegador sobra. Fuera
+     del visor sigue funcionando, que es lo que exige accesibilidad. */
+  useEffect(() => {
+    if (!visor) return;
+    const parar = (e: Event) => e.preventDefault();
+    const gestos = ["gesturestart", "gesturechange"];
+    gestos.forEach((g) => window.addEventListener(g, parar, { passive: false }));
+    return () => gestos.forEach((g) => window.removeEventListener(g, parar));
+  }, [visor]);
 
   /* El deslizar del dedo comparte el visor con el toque que lo cierra, así
      que hay que distinguirlos: si el dedo se movió, el click que iOS manda
@@ -401,6 +418,9 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
   const alSoltarDedo = (e: React.TouchEvent) => {
     const p = tacto.current;
     if (!p) return;
+    /* Con la foto ampliada el arrastre horizontal la recorre, no pasa a la
+       siguiente: el desplazamiento es del contenedor y no nuestro. */
+    if (ampliada) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - p.x;
     const dy = t.clientY - p.y;
@@ -703,8 +723,23 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
           <button className="visor-x" onClick={cerrarVisor}>
             cerrar
           </button>
-          <div className="visor-lienzo">
-            {fotoVisor && <img src={fotoVisor} alt={cajaVisor.contenido} />}
+          <div className={`visor-lienzo${ampliada ? " ampliada" : ""}`}>
+            {fotoVisor && (
+              /* Un toque acerca la foto a su tamaño real y otro la devuelve.
+                 Antes tocarla cerraba el visor; cerrar sigue estando en el
+                 fondo alrededor, en el pie y en el botón de arriba. */
+              <img
+                src={fotoVisor}
+                alt={cajaVisor.contenido}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  /* Recorrer la foto ampliada termina en un click que no es
+                     un toque: es la cola del arrastre, igual que al cerrar. */
+                  if (tacto.current?.arrastro) return;
+                  setAmpliada((v) => !v);
+                }}
+              />
+            )}
           </div>
           <div className="visor-pie" onClick={(e) => e.stopPropagation()}>
             <div className="visor-cod">{cajaVisor.codigo}</div>

@@ -155,13 +155,30 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .nada button { color: var(--vivo); }
 
 /* ── visor ────────────────────────────────────────────────── */
-/* Lo horizontal es de la app —pasar de foto—; lo vertical y el pellizco
-   siguen siendo del navegador, que es como se mira una foto de cerca. */
-.visor { position: fixed; inset: 0; z-index: 60; background: #0A0A0A; display: flex; flex-direction: column; animation: entra .2s ease; touch-action: pan-y pinch-zoom; }
+/* Sin pinch-zoom: acercar la foto es de la app, con un toque, no del
+   navegador. El pellizco ampliaba la página entera y ese zoom sobrevivía
+   a la foto, dejando la lista ampliada al cerrar. Quedan los dos ejes de
+   desplazamiento, que es lo que recorre la foto ya ampliada. */
+.visor { position: fixed; inset: 0; z-index: 60; background: #0A0A0A; display: flex; flex-direction: column; animation: entra .2s ease; touch-action: pan-x pan-y; }
 @keyframes entra { from { opacity: 0 } to { opacity: 1 } }
 .visor-fondo { position: absolute; inset: 0; background-size: cover; background-position: center; filter: blur(60px) saturate(1.3); opacity: .28; transform: scale(1.25); }
 .visor-lienzo { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; padding: 3.5rem 1rem 0; min-height: 0; }
-.visor-lienzo img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 3px; box-shadow: 0 24px 70px rgba(0,0,0,.6); }
+.visor-lienzo img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 3px; box-shadow: 0 24px 70px rgba(0,0,0,.6); cursor: zoom-in; }
+/* Ampliada: la foto va a su tamaño real y el contenedor se desplaza con el
+   scroll de siempre, sin seguir dedos ni calcular escalas. min-width evita
+   que «tamaño real» encoja una foto pequeña en una pantalla grande, y el
+   margin auto la centra sin volver inalcanzable lo que se sale por arriba,
+   que es lo que pasa al centrar con align-items dentro de un overflow. */
+.visor-lienzo.ampliada {
+  overflow: auto; align-items: flex-start; justify-content: flex-start;
+  padding: 3.5rem 0 0;
+  /* En escritorio la barra clara de siempre parte el visor en dos; en el
+     celular es flotante y esto no cambia nada. */
+  scrollbar-width: thin; scrollbar-color: var(--hilo) transparent;
+}
+/* flex: none es lo que hace que se amplíe de verdad: sin eso la imagen es
+   un elemento flexible y se encoge hasta caber, que es justo lo contrario. */
+.visor-lienzo.ampliada img { flex: none; max-width: none; max-height: none; min-width: 100%; margin: auto; border-radius: 0; box-shadow: none; cursor: zoom-out; }
 .visor-pie { position: relative; padding: 1.4rem 1.5rem 2rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: .5rem; }
 .visor-cod { color: var(--vivo); font-size: .83rem; font-weight: 600; letter-spacing: .05em; }
 .visor-txt { font-family: var(--sans); font-size: .9rem; font-weight: 300; opacity: .82; max-width: 52ch; line-height: 1.55; }
