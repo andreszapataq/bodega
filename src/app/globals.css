@@ -55,9 +55,19 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .campo input::placeholder { color: var(--gris); font-weight: 300; }
 .limpiar { color: var(--gris); font-size: .8rem; }
 
+/* Dos grupos que se comportan distinto: a la izquierda lo que crece con
+   los datos —el contador y las zonas—, a la derecha la navegación, que no
+   depende de cuántas cajas tengas. Antes era una sola fila envolvente y
+   una zona nueva empujaba etiquetas a la línea de abajo: la interfaz se
+   movía por algo que no era suyo. Ahora las zonas se acumulan hacia abajo
+   a la izquierda y la derecha se queda donde estaba. */
 .meta {
-  display: flex; align-items: center; gap: .9rem; flex-wrap: wrap;
+  display: flex; align-items: flex-start; gap: 1.5rem;
   margin-top: .85rem; font-size: .75rem; color: var(--gris);
+}
+.meta .izq {
+  flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap;
+  column-gap: .9rem; row-gap: .55rem;
 }
 .zona { color: var(--gris); transition: color .15s ease; }
 .zona.on { color: var(--vivo); }
@@ -158,6 +168,9 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .visor-nav { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 1.5rem; color: var(--gris); font-size: .75rem; margin-top: .3rem; font-variant-numeric: tabular-nums; }
 .visor-nav button:hover { color: var(--tiza); }
 .visor-nav .confirmar, .visor-nav .peligro:hover { color: var(--vivo); text-decoration: underline; text-underline-offset: 3px; }
+/* Mismo gap que el resto de la fila, para que agrupar no se note cuando
+   todo cabe; lo que cambia es que ahora bajan las tres juntas o ninguna. */
+.visor-confirmar { display: flex; align-items: center; gap: 1.5rem; }
 .visor-x { position: absolute; top: 1.1rem; right: 1.25rem; z-index: 2; color: var(--gris); font-size: .95rem; padding: .4rem .6rem; }
 
 /* ── login ────────────────────────────────────────────────── */

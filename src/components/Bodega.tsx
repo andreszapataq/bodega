@@ -455,22 +455,27 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
         </div>
 
         <div className="meta">
-          <span>
-            {!listo
-              ? "abriendo"
-              : terminos.length || zona
-              ? `${visibles.length} de ${cajas.length} cajas`
-              : `${cajas.length} cajas`}
+          {/* El contador y las zonas van juntos porque son lo que crece:
+              envuelven hacia abajo entre ellos y dejan quieta la navegación
+              de la derecha. */}
+          <span className="izq">
+            <span>
+              {!listo
+                ? "abriendo"
+                : terminos.length || zona
+                ? `${visibles.length} de ${cajas.length} cajas`
+                : `${cajas.length} cajas`}
+            </span>
+            {zonas.map((z) => (
+              <button
+                key={z}
+                className={`zona${zona === z ? " on" : ""}`}
+                onClick={() => setZona(zona === z ? null : z)}
+              >
+                {z}
+              </button>
+            ))}
           </span>
-          {zonas.map((z) => (
-            <button
-              key={z}
-              className={`zona${zona === z ? " on" : ""}`}
-              onClick={() => setZona(zona === z ? null : z)}
-            >
-              {z}
-            </button>
-          ))}
           <span className="der">
             <a href="/etiquetas">etiquetas</a>
             <button
@@ -718,8 +723,12 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
                   misma línea, sin diálogos. La foto sigue a la vista mientras
                   se decide, que es lo único que hace falta para decidir. */}
               {fotoPorQuitar === cajaVisor.fotos[visor.i] ? (
-                <>
-                  <span className="confirmar">¿quitar esta foto?</span>
+                /* La pregunta y sus dos respuestas van en un grupo propio
+                   para que no se separen: en un iPhone la fila completa se
+                   pasaba por unos pocos píxeles y el «no» quedaba solo en
+                   la línea de abajo, lejos del «sí» al que contesta. */
+                <span className="visor-confirmar">
+                  <span className="confirmar">¿quitar foto?</span>
                   <button
                     className="confirmar"
                     onClick={() => quitarFoto(cajaVisor.id, cajaVisor.fotos[visor.i])}
@@ -727,7 +736,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
                     sí
                   </button>
                   <button onClick={() => setFotoPorQuitar(null)}>no</button>
-                </>
+                </span>
               ) : (
                 <button
                   className="peligro"
