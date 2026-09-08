@@ -177,8 +177,11 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
   scrollbar-width: thin; scrollbar-color: var(--hilo) transparent;
 }
 /* flex: none es lo que hace que se amplíe de verdad: sin eso la imagen es
-   un elemento flexible y se encoge hasta caber, que es justo lo contrario. */
-.visor-lienzo.ampliada img { flex: none; max-width: none; max-height: none; min-width: 100%; margin: auto; border-radius: 0; box-shadow: none; cursor: zoom-out; }
+   un elemento flexible y se encoge hasta caber, que es justo lo contrario.
+   El ancho lo pone el pellizco en línea; aquí solo se quitan los topes que
+   lo impedirían. Sin min-width, que redondearía hacia arriba las escalas
+   pequeñas y desviaría el punto anclado entre los dedos. */
+.visor-lienzo.ampliada img { flex: none; max-width: none; max-height: none; margin: auto; border-radius: 0; box-shadow: none; cursor: zoom-out; }
 .visor-pie { position: relative; padding: 1.4rem 1.5rem 2rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: .5rem; }
 .visor-cod { color: var(--vivo); font-size: .83rem; font-weight: 600; letter-spacing: .05em; }
 .visor-txt { font-family: var(--sans); font-size: .9rem; font-weight: 300; opacity: .82; max-width: 52ch; line-height: 1.55; }

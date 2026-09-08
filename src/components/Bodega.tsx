@@ -349,11 +349,74 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
     setSubiendo(false);
   };
 
+  /* ── acercar la foto ─────────────────────────────────────── */
+
+  const lienzoRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  /* La escala vive en un ref y no en el estado: el pellizco la cambia
+     sesenta veces por segundo y eso redibujaría la lista entera. React
+     solo necesita saber si hay acercamiento o no; el ancho lo lleva el
+     DOM. anchoAjustado es el ancho de la foto cuando cabe en la pantalla,
+     que es el 1 del que parten todas las escalas. */
+  const escala = useRef(1);
+  const anchoAjustado = useRef(0);
+  const pellizco = useRef<{ dedos: number; escala: number } | null>(null);
+
+  const restablecerZoom = useCallback(() => {
+    escala.current = 1;
+    pellizco.current = null;
+    if (imgRef.current) imgRef.current.style.width = "";
+    lienzoRef.current?.classList.remove("ampliada");
+    setAmpliada(false);
+  }, []);
+
+  /** Cambia el ancho de la foto y deja quieto el punto que hay entre los
+   *  dedos. Sin ese anclaje el acercamiento se va hacia una esquina y
+   *  pierdes lo que estabas mirando, que es justo la sensación de control
+   *  que da el pellizco. Se mide con los rectángulos reales para no tener
+   *  que replicar el centrado ni el relleno del contenedor. */
+  const aplicarEscala = useCallback(
+    (pedida: number, cx?: number, cy?: number) => {
+      const img = imgRef.current;
+      const cont = lienzoRef.current;
+      if (!img || !cont) return;
+      /* Estando ajustada, lo que mide ahora es el 1. */
+      if (escala.current === 1) anchoAjustado.current = img.getBoundingClientRect().width;
+      const base = anchoAjustado.current;
+      /* El tope es el tamaño real del archivo: más allá solo se agrandan
+         los píxeles. Una foto más chica que la pantalla no se acerca. */
+      const tope = base && img.naturalWidth ? Math.max(img.naturalWidth / base, 1) : 1;
+      const nueva = Math.min(Math.max(pedida, 1), tope);
+      if (nueva <= 1.01) {
+        restablecerZoom();
+        return;
+      }
+      const marco = cont.getBoundingClientRect();
+      const px = cx ?? marco.left + marco.width / 2;
+      const py = cy ?? marco.top + marco.height / 2;
+      const antes = img.getBoundingClientRect();
+      const fx = (px - antes.left) / antes.width;
+      const fy = (py - antes.top) / antes.height;
+
+      escala.current = nueva;
+      /* La clase se pone también a mano porque el ancho se aplica en esta
+         misma línea, y el estado de React llega un dibujado tarde. */
+      cont.classList.add("ampliada");
+      setAmpliada(true);
+      img.style.width = `${base * nueva}px`;
+
+      const ahora = img.getBoundingClientRect();
+      cont.scrollLeft += ahora.left + fx * ahora.width - px;
+      cont.scrollTop += ahora.top + fy * ahora.height - py;
+    },
+    [restablecerZoom]
+  );
+
   const cerrarVisor = useCallback(() => {
     setVisor(null);
     setFotoPorQuitar(null);
-    setAmpliada(false);
-  }, []);
+    restablecerZoom();
+  }, [restablecerZoom]);
 
   const quitarFoto = async (cajaId: string, ruta: string) => {
     const caja = cajas.find((c) => c.id === cajaId);
@@ -375,10 +438,53 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
         return n > 1 ? { ...v, i: (v.i + paso + n) % n } : v;
       });
       /* Cada foto se abre entera: el acercamiento era de la anterior. */
-      setAmpliada(false);
+      restablecerZoom();
     },
-    [cajas]
+    [cajas, restablecerZoom]
   );
+
+  /* El pellizco va con escuchas nativos y no con los de React: hay que
+     poder cancelar el gesto para que el navegador no desplace el
+     contenedor mientras dos dedos se separan, y los de React no pueden
+     porque llegan como pasivos. El arrastre de un dedo sí lo deja pasar:
+     recorrer la foto ampliada es el desplazamiento de siempre, y el
+     navegador lo hace mejor que nosotros. */
+  useEffect(() => {
+    const cont = lienzoRef.current;
+    if (!visor || !cont) return;
+    const separacion = (t: TouchList) =>
+      Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+
+    const empezar = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      pellizco.current = { dedos: separacion(e.touches), escala: escala.current };
+    };
+    const mover = (e: TouchEvent) => {
+      const p = pellizco.current;
+      if (!p || e.touches.length !== 2) return;
+      e.preventDefault();
+      const t = e.touches;
+      aplicarEscala(
+        (p.escala * separacion(t)) / p.dedos,
+        (t[0].clientX + t[1].clientX) / 2,
+        (t[0].clientY + t[1].clientY) / 2
+      );
+    };
+    const terminar = (e: TouchEvent) => {
+      if (e.touches.length < 2) pellizco.current = null;
+    };
+
+    cont.addEventListener("touchstart", empezar, { passive: false });
+    cont.addEventListener("touchmove", mover, { passive: false });
+    cont.addEventListener("touchend", terminar);
+    cont.addEventListener("touchcancel", terminar);
+    return () => {
+      cont.removeEventListener("touchstart", empezar);
+      cont.removeEventListener("touchmove", mover);
+      cont.removeEventListener("touchend", terminar);
+      cont.removeEventListener("touchcancel", terminar);
+    };
+  }, [visor, aplicarEscala]);
 
   /* Safari amplía la página entera con el pellizco —ignora maximumScale— y
      ese zoom no se iba al cerrar la foto, porque nunca fue de la foto:
@@ -418,9 +524,11 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
   const alSoltarDedo = (e: React.TouchEvent) => {
     const p = tacto.current;
     if (!p) return;
-    /* Con la foto ampliada el arrastre horizontal la recorre, no pasa a la
-       siguiente: el desplazamiento es del contenedor y no nuestro. */
-    if (ampliada) return;
+    /* Con la foto acercada el arrastre horizontal la recorre, no pasa a la
+       siguiente: el desplazamiento es del contenedor y no nuestro. Se mira
+       el ref y no el estado porque durante el gesto va un dibujado por
+       delante. */
+    if (escala.current > 1) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - p.x;
     const dy = t.clientY - p.y;
@@ -723,12 +831,14 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
           <button className="visor-x" onClick={cerrarVisor}>
             cerrar
           </button>
-          <div className={`visor-lienzo${ampliada ? " ampliada" : ""}`}>
+          <div ref={lienzoRef} className={`visor-lienzo${ampliada ? " ampliada" : ""}`}>
             {fotoVisor && (
-              /* Un toque acerca la foto a su tamaño real y otro la devuelve.
-                 Antes tocarla cerraba el visor; cerrar sigue estando en el
-                 fondo alrededor, en el pie y en el botón de arriba. */
+              /* El toque es el atajo del pellizco: lleva de una vez al
+                 tamaño real y de vuelta. En escritorio es el único camino,
+                 porque ahí no hay dos dedos que leer. Antes tocarla cerraba
+                 el visor; cerrar quedó en el fondo, el pie y el botón. */
               <img
+                ref={imgRef}
                 src={fotoVisor}
                 alt={cajaVisor.contenido}
                 onClick={(e) => {
@@ -736,7 +846,8 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
                   /* Recorrer la foto ampliada termina en un click que no es
                      un toque: es la cola del arrastre, igual que al cerrar. */
                   if (tacto.current?.arrastro) return;
-                  setAmpliada((v) => !v);
+                  if (escala.current > 1) restablecerZoom();
+                  else aplicarEscala(Infinity); // hasta donde dé el archivo
                 }}
               />
             )}
