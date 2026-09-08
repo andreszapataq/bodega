@@ -13,6 +13,15 @@ create table if not exists public.cajas (
   unique (user_id, codigo)
 );
 
+-- El código es una ubicación de estante, no un nombre: B-04 son cuatro
+-- caracteres y B-100 cinco, que es el tope. Va aquí y no solo en el input
+-- porque el input no es el único camino a esta columna: el consecutivo y
+-- el QR de una etiqueta sin caja escriben sin pasar por él.
+-- Va aparte del create table para que valga también en bases ya creadas.
+alter table public.cajas drop constraint if exists cajas_codigo_largo;
+alter table public.cajas add constraint cajas_codigo_largo
+  check (char_length(codigo) <= 5);
+
 alter table public.cajas enable row level security;
 
 drop policy if exists "cajas propias" on public.cajas;

@@ -231,13 +231,18 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
     () =>
       cajas
         .filter((c) => {
+          /* La caja abierta nunca se filtra a sí misma: escribir dentro de
+             ella cambia el texto que el filtro está mirando, y sin esto la
+             fila desaparecía bajo los dedos —con el teclado abierto— apenas
+             borrabas la palabra que habías buscado. */
+          if (c.id === abierta) return true;
           if (zona && partesCodigo(c.codigo)[0] !== zona) return false;
           if (!terminos.length) return true;
           const heno = norm(c.codigo + " " + c.contenido);
           return terminos.every((t) => heno.includes(t));
         })
         .sort(ordenarPorCodigo),
-    [cajas, terminos, zona]
+    [cajas, terminos, zona, abierta]
   );
 
   /* Zona sugerida: la filtrada, si no la última en la que estuviste
@@ -504,9 +509,14 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
             <div className="fila" key={c.id}>
               {esta ? (
                 <div className="linea">
+                  {/* Cinco con el guión: B-04 es una ubicación, no un
+                      nombre. Es también lo que cabe en el campo sin que el
+                      texto se desplace y sin que el código empuje el
+                      contenido de la fila. */}
                   <input
                     className="cod cod-edit"
                     value={c.codigo}
+                    maxLength={5}
                     aria-label="Código de la caja"
                     onChange={(e) => cambiarCodigo(c.id, e.target.value)}
                   />
