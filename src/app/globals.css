@@ -61,14 +61,14 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 }
 .zona { color: var(--gris); transition: color .15s ease; }
 .zona.on { color: var(--vivo); }
-/* Más aire antes de salir: la separación física también evita el toque
-   equivocado, no solo el contraste. */
+/* Más aire antes de cerrar sesión: la separación física también evita el
+   toque equivocado, no solo el contraste. */
 .meta .der { margin-left: auto; display: flex; gap: 1.5rem; }
 .meta a { color: var(--gris); text-decoration: none; }
 .meta a:hover, .zona:hover, .limpiar:hover { color: var(--tiza); }
 /* Cerrar sesión queda por debajo de etiquetas en luminosidad: la misma
    jerarquía que ordena el resto de la app, aplicada a la consecuencia. */
-.meta .der button { color: var(--tenue); }
+.meta .der button { color: var(--tenue); white-space: nowrap; }
 .meta .der button:hover { color: var(--tiza); }
 
 /* ── etiqueta sin caja ────────────────────────────────────── */
@@ -145,7 +145,9 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .nada button { color: var(--vivo); }
 
 /* ── visor ────────────────────────────────────────────────── */
-.visor { position: fixed; inset: 0; z-index: 60; background: #0A0A0A; display: flex; flex-direction: column; animation: entra .2s ease; }
+/* Lo horizontal es de la app —pasar de foto—; lo vertical y el pellizco
+   siguen siendo del navegador, que es como se mira una foto de cerca. */
+.visor { position: fixed; inset: 0; z-index: 60; background: #0A0A0A; display: flex; flex-direction: column; animation: entra .2s ease; touch-action: pan-y pinch-zoom; }
 @keyframes entra { from { opacity: 0 } to { opacity: 1 } }
 .visor-fondo { position: absolute; inset: 0; background-size: cover; background-position: center; filter: blur(60px) saturate(1.3); opacity: .28; transform: scale(1.25); }
 .visor-lienzo { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; padding: 3.5rem 1rem 0; min-height: 0; }
@@ -153,8 +155,9 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .visor-pie { position: relative; padding: 1.4rem 1.5rem 2rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: .5rem; }
 .visor-cod { color: var(--vivo); font-size: .83rem; font-weight: 600; letter-spacing: .05em; }
 .visor-txt { font-family: var(--sans); font-size: .9rem; font-weight: 300; opacity: .82; max-width: 52ch; line-height: 1.55; }
-.visor-nav { display: flex; align-items: center; gap: 1.5rem; color: var(--gris); font-size: .75rem; margin-top: .3rem; font-variant-numeric: tabular-nums; }
+.visor-nav { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 1.5rem; color: var(--gris); font-size: .75rem; margin-top: .3rem; font-variant-numeric: tabular-nums; }
 .visor-nav button:hover { color: var(--tiza); }
+.visor-nav .confirmar, .visor-nav .peligro:hover { color: var(--vivo); text-decoration: underline; text-underline-offset: 3px; }
 .visor-x { position: absolute; top: 1.1rem; right: 1.25rem; z-index: 2; color: var(--gris); font-size: .95rem; padding: .4rem .6rem; }
 
 /* ── login ────────────────────────────────────────────────── */

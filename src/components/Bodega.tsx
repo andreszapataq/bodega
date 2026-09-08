@@ -53,12 +53,14 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
   const [porBorrar, setPorBorrar] = useState<string | null>(null);
   const [falloBorrar, setFalloBorrar] = useState<string | null>(null);
   const [visor, setVisor] = useState<{ cajaId: string; i: number } | null>(null);
+  const [fotoPorQuitar, setFotoPorQuitar] = useState<string | null>(null);
   const [listo, setListo] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
   const [uid, setUid] = useState<string | null>(null);
 
   const inputBuscar = useRef<HTMLInputElement>(null);
   const inputFoto = useRef<HTMLInputElement>(null);
+  const tacto = useRef<{ x: number; y: number; arrastro: boolean } | null>(null);
   const ultimaZona = useRef<string | null>(null);
   const guardarTimer = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const porGuardar = useRef<Record<string, Partial<Caja>>>({});
@@ -341,12 +343,65 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
     setSubiendo(false);
   };
 
+  const cerrarVisor = useCallback(() => {
+    setVisor(null);
+    setFotoPorQuitar(null);
+  }, []);
+
   const quitarFoto = async (cajaId: string, ruta: string) => {
     const caja = cajas.find((c) => c.id === cajaId);
     if (!caja) return;
     await sb.storage.from("fotos").remove([ruta]);
     tocar(cajaId, { fotos: (caja.fotos || []).filter((f) => f !== ruta) });
-    setVisor(null);
+    cerrarVisor();
+  };
+
+  /* ── visor ───────────────────────────────────────────────── */
+
+  /** Un solo paso para las tres formas de pasar de foto: flechas, botones y
+   *  dedo. Da la vuelta en los extremos, que en tres fotos es lo natural. */
+  const moverVisor = useCallback(
+    (paso: number) => {
+      setVisor((v) => {
+        if (!v) return v;
+        const n = cajas.find((c) => c.id === v.cajaId)?.fotos?.length || 0;
+        return n > 1 ? { ...v, i: (v.i + paso + n) % n } : v;
+      });
+    },
+    [cajas]
+  );
+
+  /* El deslizar del dedo comparte el visor con el toque que lo cierra, así
+     que hay que distinguirlos: si el dedo se movió, el click que iOS manda
+     después no es un toque, es la cola del gesto, y no debe cerrar nada. */
+  const alTocar = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    tacto.current = { x: t.clientX, y: t.clientY, arrastro: false };
+  };
+
+  const alDeslizar = (e: React.TouchEvent) => {
+    const p = tacto.current;
+    if (!p) return;
+    /* Dos dedos son un pellizco para mirar la foto de cerca, no un gesto de
+       pasar: se abandona el que estaba en curso en vez de resolverlo mal. */
+    if (e.touches.length > 1) {
+      tacto.current = null;
+      return;
+    }
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - p.x) > 10 || Math.abs(t.clientY - p.y) > 10)
+      p.arrastro = true;
+  };
+
+  const alSoltarDedo = (e: React.TouchEvent) => {
+    const p = tacto.current;
+    if (!p) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - p.x;
+    const dy = t.clientY - p.y;
+    /* Solo cuenta si avanza más de lo que se desvía: un movimiento que iba
+       hacia arriba no debe terminar cambiando de foto. */
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) moverVisor(dx < 0 ? 1 : -1);
   };
 
   /* ── teclado ─────────────────────────────────────────────── */
@@ -357,13 +412,9 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
         document.activeElement instanceof HTMLInputElement;
 
       if (visor) {
-        const caja = cajas.find((c) => c.id === visor.cajaId);
-        const n = caja?.fotos?.length || 0;
-        if (e.key === "Escape") setVisor(null);
-        if (e.key === "ArrowRight" && n > 1)
-          setVisor((v) => v && { ...v, i: (v.i + 1) % n });
-        if (e.key === "ArrowLeft" && n > 1)
-          setVisor((v) => v && { ...v, i: (v.i - 1 + n) % n });
+        if (e.key === "Escape") cerrarVisor();
+        if (e.key === "ArrowRight") moverVisor(1);
+        if (e.key === "ArrowLeft") moverVisor(-1);
         return;
       }
       if (e.key === "/" && !escribiendo) {
@@ -373,7 +424,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [visor, cajas]);
+  }, [visor, cerrarVisor, moverVisor]);
 
   const cajaVisor = visor ? cajas.find((c) => c.id === visor.cajaId) : null;
   const fotoVisor = cajaVisor ? urls[cajaVisor.fotos[visor!.i]] : null;
@@ -426,7 +477,9 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
                 router.replace("/login");
               }}
             >
-              salir
+              {/* Dice la acción entera: «salir» se leía como salir de la caja
+                  abierta, que es lo que uno está mirando cuando lo lee. */}
+              cerrar sesión
             </button>
           </span>
         </div>
@@ -555,7 +608,10 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
                         setAbierta(null);
                       }}
                     >
-                      cerrar
+                      {/* «listo» y no «cerrar»: describe lo que acabas de
+                          hacer con la caja, y no repite el verbo de cerrar
+                          sesión, que está arriba en la misma pantalla. */}
+                      listo
                     </button>
                   </div>
                 </div>
@@ -614,14 +670,22 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
       />
 
       {visor && cajaVisor && (
-        <div className="visor" onClick={() => setVisor(null)}>
+        <div
+          className="visor"
+          onClick={() => {
+            if (!tacto.current?.arrastro) cerrarVisor();
+          }}
+          onTouchStart={alTocar}
+          onTouchMove={alDeslizar}
+          onTouchEnd={alSoltarDedo}
+        >
           {fotoVisor && (
             <div
               className="visor-fondo"
               style={{ backgroundImage: `url(${fotoVisor})` }}
             />
           )}
-          <button className="visor-x" onClick={() => setVisor(null)}>
+          <button className="visor-x" onClick={cerrarVisor}>
             cerrar
           </button>
           <div className="visor-lienzo">
@@ -633,34 +697,35 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
             <div className="visor-nav">
               {cajaVisor.fotos.length > 1 && (
                 <>
-                  <button
-                    onClick={() =>
-                      setVisor(
-                        (v) =>
-                          v && {
-                            ...v,
-                            i: (v.i - 1 + cajaVisor.fotos.length) % cajaVisor.fotos.length,
-                          }
-                      )
-                    }
-                  >
-                    ←
-                  </button>
+                  <button onClick={() => moverVisor(-1)}>←</button>
                   <span>
                     {visor.i + 1} / {cajaVisor.fotos.length}
                   </span>
-                  <button
-                    onClick={() =>
-                      setVisor((v) => v && { ...v, i: (v.i + 1) % cajaVisor.fotos.length })
-                    }
-                  >
-                    →
-                  </button>
+                  <button onClick={() => moverVisor(1)}>→</button>
                 </>
               )}
-              <button onClick={() => quitarFoto(cajaVisor.id, cajaVisor.fotos[visor.i])}>
-                quitar foto
-              </button>
+              {/* Igual que al borrar una caja: la confirmación ocurre en la
+                  misma línea, sin diálogos. La foto sigue a la vista mientras
+                  se decide, que es lo único que hace falta para decidir. */}
+              {fotoPorQuitar === cajaVisor.fotos[visor.i] ? (
+                <>
+                  <span className="confirmar">¿quitar esta foto?</span>
+                  <button
+                    className="confirmar"
+                    onClick={() => quitarFoto(cajaVisor.id, cajaVisor.fotos[visor.i])}
+                  >
+                    sí
+                  </button>
+                  <button onClick={() => setFotoPorQuitar(null)}>no</button>
+                </>
+              ) : (
+                <button
+                  className="peligro"
+                  onClick={() => setFotoPorQuitar(cajaVisor.fotos[visor.i])}
+                >
+                  quitar foto
+                </button>
+              )}
             </div>
           </div>
         </div>
