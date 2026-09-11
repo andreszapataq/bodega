@@ -7,6 +7,11 @@ import { comprimir } from "@/lib/imagen";
 import { norm, ordenarPorCodigo, partesCodigo, relativo } from "@/lib/codigo";
 import { MAX_FOTOS, type Caja } from "@/lib/tipos";
 
+/* Cuánto vale una URL firmada. Ocho horas cubren de sobra una vuelta por
+   el estante; lo que no cubren es la pestaña que queda abierta de un día
+   para otro, y de eso se encarga refirmar(). */
+const VALIDEZ_FIRMA = 60 * 60 * 8;
+
 /** Resalta los términos de búsqueda dentro del texto de la caja. */
 function Resaltado({ texto, terminos }: { texto: string; terminos: string[] }) {
   if (!terminos.length) return <>{texto}</>;
@@ -107,7 +112,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
       if (rutas.length) {
         const { data: firmadas } = await sb.storage
           .from("fotos")
-          .createSignedUrls(rutas, 60 * 60 * 8);
+          .createSignedUrls(rutas, VALIDEZ_FIRMA);
         if (firmadas && vivo) {
           const mapa: Record<string, string> = {};
           firmadas.forEach((f) => {
@@ -121,6 +126,39 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
       vivo = false;
     };
   }, [sb, router, codigoInicial]);
+
+  /* El celular no cierra las pestañas: la app vuelve del bolsillo al día
+     siguiente con el mismo DOM y unas URLs que ya vencieron. El navegador
+     había soltado esas imágenes de memoria, las vuelve a pedir con el token
+     viejo y recibe un 400 —el icono roto que solo se iba refrescando otra
+     vez, porque el segundo refresco sí vuelve a firmar—. Aquí se firma de
+     nuevo al primer fallo, lo que además cubre la foto que no llegó porque
+     la red del celular todavía estaba dormida.
+     Se descarta la URL que falló y no la ruta: la pestaña puede seguir viva
+     al otro día y vencer otra vez, y la foto tiene que poder recuperarse
+     tantas veces como haga falta. */
+  const vencidas = useRef(new Set<string>());
+
+  const refirmar = useCallback(
+    async (ruta: string) => {
+      /* Una sola refirma por ráfaga: las URLs vencen todas juntas, porque
+         salieron del mismo lote, así que el primer icono roto renueva la
+         lista entera y las demás ya no piden nada. */
+      if (!urls[ruta] || vencidas.current.has(urls[ruta])) return;
+      const rutas = cajas.flatMap((c) => c.fotos || []);
+      rutas.forEach((r) => urls[r] && vencidas.current.add(urls[r]));
+      const { data } = await sb.storage
+        .from("fotos")
+        .createSignedUrls(rutas, VALIDEZ_FIRMA);
+      if (!data) return;
+      const mapa: Record<string, string> = {};
+      data.forEach((f) => {
+        if (f.path && f.signedUrl) mapa[f.path] = f.signedUrl;
+      });
+      setUrls((u) => ({ ...u, ...mapa }));
+    },
+    [sb, cajas, urls]
+  );
 
   /* ── escritura ───────────────────────────────────────────── */
 
@@ -337,7 +375,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
         if (error) throw error;
         const { data: firmada } = await sb.storage
           .from("fotos")
-          .createSignedUrl(ruta, 60 * 60 * 8);
+          .createSignedUrl(ruta, VALIDEZ_FIRMA);
         if (firmada?.signedUrl)
           setUrls((u) => ({ ...u, [ruta]: firmada.signedUrl }));
         nuevas.push(ruta);
@@ -705,7 +743,9 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
                         onClick={() => urls[ruta] && setVisor({ cajaId: c.id, i })}
                         aria-label={`Ver foto ${i + 1} de ${c.codigo}`}
                       >
-                        {urls[ruta] && <img src={urls[ruta]} alt="" />}
+                        {urls[ruta] && (
+                          <img src={urls[ruta]} alt="" onError={() => refirmar(ruta)} />
+                        )}
                       </button>
                     ))}
                     {(c.fotos?.length || 0) < MAX_FOTOS && (
@@ -841,6 +881,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
                 ref={imgRef}
                 src={fotoVisor}
                 alt={cajaVisor.contenido}
+                onError={() => refirmar(cajaVisor.fotos[visor.i])}
                 onClick={(e) => {
                   e.stopPropagation();
                   /* Recorrer la foto ampliada termina en un click que no es
