@@ -71,6 +71,22 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
   const guardarTimer = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const porGuardar = useRef<Record<string, Partial<Caja>>>({});
   const codigoGuardado = useRef<Record<string, string>>({});
+  const filaAbierta = useRef<HTMLDivElement>(null);
+  const llevarArriba = useRef<string | null>(null);
+
+  /* La caja escaneada se abre donde le toca en el estante, y si le toca
+     abajo quedaba fuera de la pantalla. Solo la del QR se lleva arriba:
+     abrir una caja tocándola ya la tiene uno a la vista, y moverle la
+     página ahí sería quitarle el lugar que estaba mirando. Se espera a las
+     fuentes porque cambiar de letra reacomoda las líneas de las cajas de
+     arriba, y la caja terminaría corrida de donde se la dejó. */
+  useEffect(() => {
+    if (!abierta || abierta !== llevarArriba.current) return;
+    llevarArriba.current = null;
+    void document.fonts.ready.then(() =>
+      filaAbierta.current?.scrollIntoView({ block: "start" })
+    );
+  }, [abierta]);
 
   /* ── carga ───────────────────────────────────────────────── */
   useEffect(() => {
@@ -102,8 +118,10 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
          existe hay que decirlo, no dejar la lista general sin explicar. */
       if (codigoInicial) {
         const c = lista.find((x) => x.codigo === codigoInicial);
-        if (c) setAbierta(c.id);
-        else setEtiquetaMuerta(codigoInicial);
+        if (c) {
+          llevarArriba.current = c.id;
+          setAbierta(c.id);
+        } else setEtiquetaMuerta(codigoInicial);
       }
 
       /* Las fotos entran después: la lista no espera por las imágenes.
@@ -610,7 +628,9 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="qué estás buscando"
-            autoFocus
+            /* Quien escanea ya tiene la caja en la mano: no viene a buscar,
+               y el teclado abierto le tapaba justo la caja que escaneó. */
+            autoFocus={!codigoInicial}
             aria-label="Buscar en la bodega"
           />
           {q && (
@@ -677,7 +697,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
         {visibles.map((c) => {
           const esta = abierta === c.id;
           return (
-            <div className="fila" key={c.id}>
+            <div className="fila" key={c.id} ref={esta ? filaAbierta : undefined}>
               {esta ? (
                 <div className="linea">
                   {/* Cinco con el guión: B-04 es una ubicación, no un
