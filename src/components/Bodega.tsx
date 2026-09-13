@@ -628,6 +628,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="qué estás buscando"
+            autoCapitalize="none"
             /* Quien escanea ya tiene la caja en la mano: no viene a buscar,
                y el teclado abierto le tapaba justo la caja que escaneó. */
             autoFocus={!codigoInicial}
@@ -746,6 +747,11 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
                     value={c.contenido}
                     rows={1}
                     placeholder="qué hay adentro, separado por comas"
+                    /* El contenido se escribe en minúscula y el teclado del
+                       celular ponía mayúscula al empezar, que había que ir a
+                       deshacer. El autocorrector se queda: es quien pone las
+                       tildes. */
+                    autoCapitalize="none"
                     onChange={(e) => tocar(c.id, { contenido: e.target.value })}
                     ref={(el) => {
                       if (el) {
