@@ -33,6 +33,12 @@ html, body {
   overscroll-behavior-y: none;
 }
 
+/* Con el visor abierto la lista sigue ahí debajo, y arrastrar la foto la
+   desplazaba sin que se viera. En el celular ese desplazamiento es el que
+   esconde o saca las barras del navegador, y cada vez el visor cambiaba de
+   tamaño bajo el dedo. Mientras hay foto no hay página que mover. */
+html:has(.visor), html:has(.visor) body { overflow: hidden; }
+
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 input, textarea { font: inherit; color: inherit; background: none; border: 0; outline: none; }
 :focus-visible { outline: 1px solid var(--vivo); outline-offset: 3px; border-radius: 2px; }
@@ -172,6 +178,9 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .visor-lienzo.ampliada {
   overflow: auto; align-items: flex-start; justify-content: flex-start;
   padding: 3.5rem 0 0;
+  /* Llegar al borde de la foto ampliada no debe pasarle el arrastre a la
+     página, que es lo que sacaba las barras del navegador. */
+  overscroll-behavior: contain;
   /* En escritorio la barra clara de siempre parte el visor en dos; en el
      celular es flotante y esto no cambia nada. */
   scrollbar-width: thin; scrollbar-color: var(--hilo) transparent;
@@ -184,7 +193,16 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .visor-lienzo.ampliada img { flex: none; max-width: none; max-height: none; margin: auto; border-radius: 0; box-shadow: none; cursor: zoom-out; }
 .visor-pie { position: relative; padding: 1.4rem 1.5rem 2rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: .5rem; }
 .visor-cod { color: var(--vivo); font-size: .83rem; font-weight: 600; letter-spacing: .05em; }
-.visor-txt { font-family: var(--sans); font-size: .9rem; font-weight: 300; opacity: .82; max-width: 52ch; line-height: 1.55; }
+/* El contenido de una caja no tiene tope, y en el visor le quitaba alto a
+   la foto hasta hacerla desaparecer, empujando además las flechas y
+   «quitar foto» fuera de la pantalla. Aquí la foto es lo que se vino a
+   ver: el texto se queda con un cuarto de la pantalla y lo que sobra se
+   recorre adentro. Un cuarto deja entero el texto de una caja normal. */
+.visor-txt {
+  font-family: var(--sans); font-size: .9rem; font-weight: 300; opacity: .82; max-width: 52ch; line-height: 1.55;
+  max-height: 25dvh; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--hilo) transparent;
+}
 .visor-nav { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 1.5rem; color: var(--gris); font-size: .75rem; margin-top: .3rem; font-variant-numeric: tabular-nums; }
 .visor-nav button:hover { color: var(--tiza); }
 .visor-nav .confirmar, .visor-nav .peligro:hover { color: var(--vivo); text-decoration: underline; text-underline-offset: 3px; }
