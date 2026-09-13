@@ -40,6 +40,15 @@ html, body {
    mismo con la cámara abierta. */
 html:has(.visor, .escaner), html:has(.visor, .escaner) body { overflow: hidden; }
 
+/* Instalada en la pantalla de inicio, la barra de desplazamiento es una
+   línea que cruza el contenido cada vez que se recorre la lista, y no
+   orienta: el estante está ordenado por código, y eso es lo que dice dónde
+   estás. En el navegador se queda, que ahí es lo que se espera. */
+@media (display-mode: standalone) {
+  * { scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; }
+}
+
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 input, textarea { font: inherit; color: inherit; background: none; border: 0; outline: none; }
 :focus-visible { outline: 1px solid var(--vivo); outline-offset: 3px; border-radius: 2px; }
