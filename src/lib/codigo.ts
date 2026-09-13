@@ -11,6 +11,19 @@ export function ordenarPorCodigo<T extends { codigo: string }>(a: T, b: T) {
   return za === zb ? na - nb : za < zb ? -1 : 1;
 }
 
+/** El código de caja que lleva el QR de una etiqueta, o null si no es de
+ *  una. Se mira la ruta /b/<código> y no el dominio: una etiqueta impresa
+ *  desde otra dirección de la app sigue siendo de esta bodega. */
+export function codigoDeQr(texto: string): string | null {
+  try {
+    const m = new URL(texto).pathname.match(/^\/b\/([^/]+)\/?$/);
+    return m ? decodeURIComponent(m[1]).toUpperCase() : null;
+  } catch {
+    // No es una URL, o trae un % roto: en ninguno de los dos casos es nuestra.
+    return null;
+  }
+}
+
 /** Sin tildes y en minúscula, para que "cafe" encuentre "café". */
 export const norm = (s: string) =>
   (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");

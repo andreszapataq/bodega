@@ -2,10 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
 import { comprimir } from "@/lib/imagen";
 import { norm, ordenarPorCodigo, partesCodigo, relativo } from "@/lib/codigo";
 import { MAX_FOTOS, type Caja } from "@/lib/tipos";
+
+/* La cámara y el lector de QR se descargan al abrir el escáner: la lista
+   no espera por algo que no siempre se usa. */
+const Escaner = dynamic(() => import("./Escaner"), { ssr: false });
 
 /* Cuánto vale una URL firmada. Ocho horas cubren de sobra una vuelta por
    el estante; lo que no cubren es la pestaña que queda abierta de un día
@@ -63,6 +68,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
   const [listo, setListo] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
   const [uid, setUid] = useState<string | null>(null);
+  const [escaneando, setEscaneando] = useState(false);
 
   const inputBuscar = useRef<HTMLInputElement>(null);
   const inputFoto = useRef<HTMLInputElement>(null);
@@ -615,6 +621,30 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [visor, cerrarVisor, moverVisor]);
 
+  /** Lo mismo que entrar por /b/<código>, sin pestaña nueva ni recarga. */
+  const abrirEscaneada = (codigo: string) => {
+    setEscaneando(false);
+    const c = cajas.find((x) => x.codigo === codigo);
+    if (!c) {
+      setEtiquetaMuerta(codigo);
+      /* El aviso vive arriba de la lista: si estabas abajo, no lo verías. */
+      window.scrollTo(0, 0);
+      return;
+    }
+    setEtiquetaMuerta(null);
+    setPorBorrar(null);
+    setFalloBorrar(null);
+    /* Si ya estaba abierta, abrirla otra vez no cambia nada y el efecto que
+       la sube no se entera: se sube aquí. */
+    if (c.id === abierta) {
+      filaAbierta.current?.scrollIntoView({ block: "start" });
+      return;
+    }
+    soltar(abierta);
+    llevarArriba.current = c.id;
+    setAbierta(c.id);
+  };
+
   const cajaVisor = visor ? cajas.find((c) => c.id === visor.cajaId) : null;
   const fotoVisor = cajaVisor ? urls[cajaVisor.fotos[visor!.i]] : null;
 
@@ -634,10 +664,18 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
             autoFocus={!codigoInicial}
             aria-label="Buscar en la bodega"
           />
-          {q && (
+          {q ? (
             <button className="limpiar" onClick={() => setQ("")}>
               limpiar
             </button>
+          ) : (
+            /* Solo con la lista cargada: antes, cualquier código leído
+               parecería de una caja que no existe. */
+            listo && (
+              <button className="escanear" onClick={() => setEscaneando(true)}>
+                escanear
+              </button>
+            )
           )}
         </div>
 
@@ -961,6 +999,10 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
             </div>
           </div>
         </div>
+      )}
+
+      {escaneando && (
+        <Escaner onCodigo={abrirEscaneada} onCerrar={() => setEscaneando(false)} />
       )}
     </div>
   );

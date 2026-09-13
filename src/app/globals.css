@@ -36,8 +36,9 @@ html, body {
 /* Con el visor abierto la lista sigue ahí debajo, y arrastrar la foto la
    desplazaba sin que se viera. En el celular ese desplazamiento es el que
    esconde o saca las barras del navegador, y cada vez el visor cambiaba de
-   tamaño bajo el dedo. Mientras hay foto no hay página que mover. */
-html:has(.visor), html:has(.visor) body { overflow: hidden; }
+   tamaño bajo el dedo. Mientras hay foto no hay página que mover. Lo
+   mismo con la cámara abierta. */
+html:has(.visor, .escaner), html:has(.visor, .escaner) body { overflow: hidden; }
 
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 input, textarea { font: inherit; color: inherit; background: none; border: 0; outline: none; }
@@ -59,7 +60,9 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
   letter-spacing: -.015em; min-width: 0;
 }
 .campo input::placeholder { color: var(--gris); font-weight: 300; }
-.limpiar { color: var(--gris); font-size: .8rem; }
+/* Escanear vive en el buscador y no en la fila de abajo: es otra forma de
+   buscar, y ocupa el lugar de limpiar porque nunca hacen falta a la vez. */
+.limpiar, .escanear { color: var(--gris); font-size: .8rem; }
 
 /* Dos grupos que se comportan distinto: a la izquierda lo que crece con
    los datos —el contador y las zonas—, a la derecha la navegación, que no
@@ -81,7 +84,7 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
    toque equivocado, no solo el contraste. */
 .meta .der { margin-left: auto; display: flex; gap: 1.5rem; }
 .meta a { color: var(--gris); text-decoration: none; }
-.meta a:hover, .zona:hover, .limpiar:hover { color: var(--tiza); }
+.meta a:hover, .zona:hover, .limpiar:hover, .escanear:hover { color: var(--tiza); }
 /* Cerrar sesión queda por debajo de etiquetas en luminosidad: la misma
    jerarquía que ordena el resto de la app, aplicada a la consecuencia. */
 .meta .der button { color: var(--tenue); white-space: nowrap; }
@@ -215,7 +218,29 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 /* Mismo gap que el resto de la fila, para que agrupar no se note cuando
    todo cabe; lo que cambia es que ahora bajan las tres juntas o ninguna. */
 .visor-confirmar { display: flex; align-items: center; gap: 1.5rem; }
-.visor-x { position: absolute; top: 1.1rem; right: 1.25rem; z-index: 2; color: var(--gris); font-size: .95rem; padding: .4rem .6rem; }
+.visor-x, .escaner-x { position: absolute; top: 1.1rem; right: 1.25rem; z-index: 2; color: var(--gris); font-size: .95rem; padding: .4rem .6rem; }
+
+/* ── escáner ──────────────────────────────────────────────── */
+/* El mismo fondo y el mismo cerrar que el visor: es la misma clase de
+   pantalla, algo que se mira un momento y se suelta. La mira es blanca
+   y tenue; lo que tiene color es lo que ve la cámara. */
+.escaner { position: fixed; inset: 0; z-index: 60; background: #0A0A0A; animation: entra .2s ease; touch-action: none; }
+.escaner video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* Van encima de lo que ve la cámara, que puede ser una etiqueta blanca: la
+   sombra es lo que las deja leerse sin ponerles una franja encima. */
+.escaner-x, .escaner-pie { text-shadow: 0 1px 3px rgba(0, 0, 0, .85); }
+.escaner-x { color: var(--tiza); }
+/* La sombra enorme oscurece todo lo que queda fuera de la mira sin un
+   segundo elemento. */
+.escaner-mira {
+  position: absolute; left: 50%; top: 50%; width: min(62vw, 42vh); aspect-ratio: 1;
+  transform: translate(-50%, -50%); border: 1px solid rgba(255, 255, 255, .55); border-radius: 4px;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .35);
+}
+.escaner-pie {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 1.4rem 1.5rem 2.4rem;
+  text-align: center; font-size: .78rem; line-height: 1.5; color: var(--tiza);
+}
 
 /* ── login ────────────────────────────────────────────────── */
 .login { max-width: 340px; margin: 0 auto; padding: 25vh 1.25rem 0; }
