@@ -17,6 +17,9 @@ const mono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "bodega",
   description: "Inventario de la bodega de la casa",
+  /* Barra de estado negra y no translúcida: la translúcida pone la página
+     debajo de la hora, y el buscador quedaría tapado por ella. */
+  appleWebApp: { title: "bodega", statusBarStyle: "black" },
 };
 
 export const viewport: Viewport = {

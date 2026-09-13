@@ -81,7 +81,6 @@ funciones, se abandonan por fricción al registrar.
 
 ## Pendientes
 
-- Escanear el QR desde la propia app, sin salir a la cámara del sistema.
 - Exportar todo a texto plano, para tener un respaldo legible sin la app.
 - El plan gratuito de Supabase pausa el proyecto tras 7 días sin
   peticiones. Resolver con un ping programado.
