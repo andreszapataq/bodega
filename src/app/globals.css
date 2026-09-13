@@ -163,9 +163,15 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 /* ── visor ────────────────────────────────────────────────── */
 /* Sin pinch-zoom: acercar la foto es de la app, con un toque, no del
    navegador. El pellizco ampliaba la página entera y ese zoom sobrevivía
-   a la foto, dejando la lista ampliada al cerrar. Quedan los dos ejes de
-   desplazamiento, que es lo que recorre la foto ya ampliada. */
-.visor { position: fixed; inset: 0; z-index: 60; background: #0A0A0A; display: flex; flex-direction: column; animation: entra .2s ease; touch-action: pan-x pan-y; }
+   a la foto, dejando la lista ampliada al cerrar.
+   Tampoco hay arrastre del navegador. Bloquear el desplazamiento de la
+   página no bastaba: en iOS las barras de Chrome responden al gesto del
+   dedo aunque la página no se mueva, y si estaban escondidas —basta haber
+   bajado por la lista para abrir la caja— reaparecían y encogían el visor.
+   Las dos cosas que sí se recorren, la foto ampliada y el texto largo, lo
+   devuelven para sí: son contenedores con desplazamiento, y ahí el
+   navegador deja de mirar lo que dicen los de afuera. */
+.visor { position: fixed; inset: 0; z-index: 60; background: #0A0A0A; display: flex; flex-direction: column; animation: entra .2s ease; touch-action: none; }
 @keyframes entra { from { opacity: 0 } to { opacity: 1 } }
 .visor-fondo { position: absolute; inset: 0; background-size: cover; background-position: center; filter: blur(60px) saturate(1.3); opacity: .28; transform: scale(1.25); }
 .visor-lienzo { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; padding: 3.5rem 1rem 0; min-height: 0; }
@@ -180,7 +186,7 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
   padding: 3.5rem 0 0;
   /* Llegar al borde de la foto ampliada no debe pasarle el arrastre a la
      página, que es lo que sacaba las barras del navegador. */
-  overscroll-behavior: contain;
+  overscroll-behavior: contain; touch-action: pan-x pan-y;
   /* En escritorio la barra clara de siempre parte el visor en dos; en el
      celular es flotante y esto no cambia nada. */
   scrollbar-width: thin; scrollbar-color: var(--hilo) transparent;
@@ -200,7 +206,7 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
    recorre adentro. Un cuarto deja entero el texto de una caja normal. */
 .visor-txt {
   font-family: var(--sans); font-size: .9rem; font-weight: 300; opacity: .82; max-width: 52ch; line-height: 1.55;
-  max-height: 25dvh; overflow-y: auto; overscroll-behavior: contain;
+  max-height: 25dvh; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
   scrollbar-width: thin; scrollbar-color: var(--hilo) transparent;
 }
 .visor-nav { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 1.5rem; color: var(--gris); font-size: .75rem; margin-top: .3rem; font-variant-numeric: tabular-nums; }
