@@ -19,7 +19,8 @@ const VALIDEZ_FIRMA = 60 * 60 * 8;
 
 /** Resalta los términos de búsqueda dentro del texto de la caja. */
 function Resaltado({ texto, terminos }: { texto: string; terminos: string[] }) {
-  if (!terminos.length) return <>{texto}</>;
+  if (!texto) return null;
+  const titulo = largoTitulo(texto);
   const base = norm(texto);
   const marcas = new Array(texto.length).fill(false);
   terminos.forEach((t) => {
@@ -29,25 +30,44 @@ function Resaltado({ texto, terminos }: { texto: string; terminos: string[] }) {
       i = base.indexOf(t, i + t.length);
     }
   });
-  const partes: { t: string; on: boolean }[] = [];
+  // Se corta donde cambia la marca y donde termina el título, para que una
+  // búsqueda que cruce los dos puntos no parta la negrilla.
+  const partes: { t: string; on: boolean; tit: boolean }[] = [];
   let buf = "";
-  let estado = marcas[0];
-  for (let i = 0; i < texto.length; i++) {
-    if (marcas[i] !== estado) {
-      partes.push({ t: buf, on: estado });
+  for (let i = 0; i <= texto.length; i++) {
+    if (i === texto.length || (i > 0 && (marcas[i] !== marcas[i - 1] || i === titulo))) {
+      partes.push({ t: buf, on: marcas[i - 1], tit: i <= titulo });
       buf = "";
-      estado = marcas[i];
     }
-    buf += texto[i];
+    buf += texto[i] ?? "";
   }
-  partes.push({ t: buf, on: estado });
   return (
     <>
-      {partes.map((p, i) =>
-        p.on ? <mark key={i}>{p.t}</mark> : <span key={i}>{p.t}</span>
-      )}
+      {partes.map((p, i) => {
+        const t = p.on ? <mark>{p.t}</mark> : p.t;
+        return p.tit ? (
+          <b key={i} className="titulo">{t}</b>
+        ) : (
+          <span key={i}>{t}</span>
+        );
+      })}
     </>
   );
+}
+
+/* Lo que va antes de los dos puntos es el título de la caja («cables:»).
+   Sale del texto, como la zona sale del código: no es un campo ni una
+   categoría, y una caja sin dos puntos se ve igual que siempre. Solo
+   cuenta si llegan pronto y antes de cualquier coma, para que un «3:30»
+   perdido en la lista no convierta en título todo lo anterior. */
+const TOPE_TITULO = 40;
+
+function largoTitulo(texto: string) {
+  const i = texto.indexOf(":");
+  if (i < 1 || i >= TOPE_TITULO) return 0;
+  const coma = texto.indexOf(",");
+  if (coma !== -1 && coma < i) return 0;
+  return i + 1; // los dos puntos van con el título
 }
 
 export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
@@ -959,7 +979,9 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
           </div>
           <div className="visor-pie" onClick={(e) => e.stopPropagation()}>
             <div className="visor-cod">{cajaVisor.codigo}</div>
-            <div className="visor-txt">{cajaVisor.contenido}</div>
+            <div className="visor-txt">
+              <Resaltado texto={cajaVisor.contenido} terminos={[]} />
+            </div>
             <div className="visor-nav">
               {cajaVisor.fotos.length > 1 && (
                 <>
