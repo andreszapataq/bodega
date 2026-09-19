@@ -264,6 +264,11 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .login .error { margin-top: 1.2rem; font-family: var(--sans); font-size: .85rem; color: var(--tiza); }
 
 /* ── etiquetas ────────────────────────────────────────────── */
+/* Imprimir es a esta página lo que entrar es al login: la acción, no una
+   consecuencia. La regla general de .meta .der apaga los botones porque
+   está pensada para cerrar sesión, que no debe invitar al dedo. Aquí
+   pasa lo contrario, y el hover no la baja a --tiza: ya está arriba. */
+.meta .der button.imprimir, .meta .der button.imprimir:hover { color: var(--vivo); }
 .etiquetas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; margin-top: 2rem; }
 .etiqueta { background: #fff; border-radius: 3px; padding: .7rem; text-align: center; }
 .etiqueta img { width: 100%; display: block; }
