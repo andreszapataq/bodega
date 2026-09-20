@@ -135,6 +135,15 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
   flex: 1; font-family: var(--sans); font-size: 1rem; font-weight: 300;
   line-height: 1.5; letter-spacing: -.005em; min-width: 0; overflow-wrap: anywhere;
 }
+/* Cuatro líneas alcanzan para reconocer una caja, y una de treinta dejaba
+   «nueva caja» a varias pantallas del pulgar. Lo que se corta está a un
+   toque: abrirla muestra el contenido entero. Con búsqueda no se corta,
+   porque la palabra encontrada puede estar en la línea doce y ahí el
+   resaltado —que es media búsqueda— quedaría escondido. */
+.txt.corto {
+  display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden;
+}
 .txt mark { background: var(--vivo-op); color: var(--vivo); border-radius: 1px; }
 /* Peso y no color: más brillo competiría con el código, que es lo más
    brillante de la fila. */

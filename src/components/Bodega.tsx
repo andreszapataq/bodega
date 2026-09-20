@@ -785,7 +785,10 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
                   }}
                 >
                   <span className="cod">{c.codigo}</span>
-                  <span className="txt">
+                  {/* Sin búsqueda la fila es una línea del estante y se
+                      recorta; buscando tiene que poder mostrar dónde
+                      coincidió, aunque sea al final de una caja larga. */}
+                  <span className={`txt${terminos.length ? "" : " corto"}`}>
                     {c.contenido ? (
                       <Resaltado texto={c.contenido} terminos={terminos} />
                     ) : (
