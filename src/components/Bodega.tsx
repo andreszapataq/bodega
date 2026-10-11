@@ -665,6 +665,18 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
     setAbierta(c.id);
   };
 
+  /* Tocar el buscador es buscar otra cosa: la caja abierta se quedaba
+     ocupando la pantalla, entera y sin filtrar, encima de los resultados.
+     «limpiar» también la cierra: devolvía la lista entera con la página
+     arriba, y la caja quedaba abierta más abajo, donde nadie la miraba. */
+  const buscar = (v: string) => {
+    if (abierta) {
+      soltar(abierta);
+      setAbierta(null);
+    }
+    setQ(v);
+  };
+
   const cajaVisor = visor ? cajas.find((c) => c.id === visor.cajaId) : null;
   const fotoVisor = cajaVisor ? urls[cajaVisor.fotos[visor!.i]] : null;
 
@@ -676,17 +688,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
           <input
             ref={inputBuscar}
             value={q}
-            onChange={(e) => {
-              /* Escribir aquí es buscar otra cosa: la caja abierta se
-                 quedaba ocupando la pantalla, entera y sin filtrar, encima
-                 de los resultados. «limpiar» no la cierra, porque borrar la
-                 búsqueda suele ser volver a ver esa caja en su estante. */
-              if (abierta) {
-                soltar(abierta);
-                setAbierta(null);
-              }
-              setQ(e.target.value);
-            }}
+            onChange={(e) => buscar(e.target.value)}
             placeholder="qué estás buscando"
             autoCapitalize="none"
             /* Quien escanea ya tiene la caja en la mano: no viene a buscar,
@@ -695,7 +697,7 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
             aria-label="Buscar en la bodega"
           />
           {q ? (
-            <button className="limpiar" onClick={() => setQ("")}>
+            <button className="limpiar" onClick={() => buscar("")}>
               limpiar
             </button>
           ) : (
