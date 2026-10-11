@@ -676,7 +676,17 @@ export default function Bodega({ codigoInicial }: { codigoInicial?: string }) {
           <input
             ref={inputBuscar}
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              /* Escribir aquí es buscar otra cosa: la caja abierta se
+                 quedaba ocupando la pantalla, entera y sin filtrar, encima
+                 de los resultados. «limpiar» no la cierra, porque borrar la
+                 búsqueda suele ser volver a ver esa caja en su estante. */
+              if (abierta) {
+                soltar(abierta);
+                setAbierta(null);
+              }
+              setQ(e.target.value);
+            }}
             placeholder="qué estás buscando"
             autoCapitalize="none"
             /* Quien escanea ya tiene la caja en la mano: no viene a buscar,
